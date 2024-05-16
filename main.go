@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"regexp"
 	"strings"
@@ -36,6 +37,10 @@ type WeatherResponse struct {
 	TempC float64 `json:"temp_C"`
 	TempF float64 `json:"temp_F"`
 	TempK float64 `json:"temp_K"`
+}
+
+type ErrorResponse struct {
+	Erro bool `json:"erro"`
 }
 
 func main() {
@@ -83,7 +88,12 @@ func GetWeatherByCep(w http.ResponseWriter, r *http.Request) {
 		w.Write(js)
 		return
 	}
+
+	fmt.Print("var dadosCidade:")
 	fmt.Println(dadosCidade)
+
+	fmt.Print("var dadosCidade.Cidade:")
+	fmt.Println(dadosCidade.Cidade)
 
 	// Busca o clima da cidade
 	clima, err := buscaClima(strings.ToLower(dadosCidade.Cidade))
@@ -117,6 +127,14 @@ func buscaCidade(cep string) (*CEP, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	var erroResponse ErrorResponse
+	err = json.Unmarshal(dados, &erroResponse)
+	if err == nil && erroResponse.Erro {
+		err = fmt.Errorf("A resposta apresentou erro: %v", erroResponse)
+		return nil, err
+	}
+
 	var c CEP
 	err = json.Unmarshal(dados, &c)
 	if err != nil {
@@ -126,8 +144,9 @@ func buscaCidade(cep string) (*CEP, error) {
 }
 
 func buscaClima(cidade string) (*Clima, error) {
-	resp, err := http.Get("https://api.openweathermap.org/data/2.5/weather?q=" + cidade + ",br&appid=904020cdcc44973b1dd0810487a25068")
+	cidade = url.QueryEscape(cidade)
 	fmt.Println(cidade)
+	resp, err := http.Get("https://api.openweathermap.org/data/2.5/weather?q=" + cidade + ",br&appid=904020cdcc44973b1dd0810487a25068")
 	if err != nil {
 		return nil, err
 	}
